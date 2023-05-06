@@ -20,11 +20,18 @@ extern entropica_nonyield_t entropica_get_freqs(entropica_cntr_t countarray, ent
 extern entropica_len_t get_len_from_countarray(entropica_cntr_t countarray);
 extern entropica_entropy_t sum_log2_freq_get_entropy(entropica_cntr_t countarray);
 
-int main() {
-	entropica_cntr_t countarray;
-	entropica_nseq_t sequence = "AATTGTATC\n";
-	entropica_count_bytes_til_newl(sequence, countarray);
+entropica_entropy_t compute_sequence_entropy(entropica_cntr_t countarray) {
 	entropica_len_t len = get_len_from_countarray(countarray);
 	entropica_get_freqs(countarray, len, UDIV_MAGICS);
 	entropica_entropy_t entropy = sum_log2_freq_get_entropy(countarray);
+	return entropy;
+}
+
+int main() {
+	entropica_cntr_t countarray;
+	countarray[65] = 12;
+	countarray[67] = 4;
+	countarray[71] = 3;
+	countarray[84] = 2;
+	entropica_entropy_t entropy = compute_sequence_entropy(countarray);
 }
