@@ -11,14 +11,13 @@
 		#define BYTE_PTR %rdi
 		#define CNTR_PTR %rsi
 		#define CNTR_REG %rcx
-		#define BYTE_REG %r10b
+		#define BYTE_REG %r10d
 		#define DWRD_REG %r10
 		#define NEWL_CHR $10
 
-		xorq DWRD_REG, DWRD_REG
 
 	1:
-		movb (BYTE_PTR), BYTE_REG
+		movzbl (BYTE_PTR), BYTE_REG
 		cmpq NEWL_CHR, DWRD_REG
 		je 2f
 		incq (CNTR_PTR, DWRD_REG)
@@ -43,6 +42,7 @@
 		#define CNTR_REG %rcx
 		#define CNTR_WRD %ecx
 		#define ACCM_REG %rax
+		#define ACCM_MID %eax
 		#define ACCM_LOW %al
 		#define DIVN_QWD %rsi
 		#define DIVN_LOW %sil
@@ -64,9 +64,8 @@
 		#define NUCL_THY 84
 		#define LWRD_BIT 4
 
-		xorq CNTR_REG, CNTR_REG
 
-		movl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_WRD
+		movzwl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_WRD
 		movq CNTR_REG, MAGC_REG
 		movq CNTR_REG, SHR1_REG
 		movq CNTR_REG, SHR2_REG
@@ -86,8 +85,7 @@
 			movq DIVN_QWD, ACCM_REG;
 
 		#define GETFREQC(OFFSET) 						\
-			xorq ACCM_REG, ACCM_REG;					\
-			movb OFFSET ## (CNTR_PTR), ACCM_LOW;		\
+			movzbl OFFSET ## (CNTR_PTR), ACCM_MID;		\
 			movq ACCM_REG, DIVN_QWD;					\
 			MULTDECA									\
 			MULTDECA									\
@@ -145,7 +143,7 @@
 		#define NUCL_GUA 71
 		#define NUCL_THY 84
 
-		xorq RETR_REG, REGR_REG
+		xorq RETR_REG, RETR_REG
 
 		#define ADDNLEN(OFFSET) 					\
 			addq OFFSET ## (CNTR_PTR), RETR_REG;
@@ -179,7 +177,7 @@
 
 		#define COMPENT(OFFSET)							\
 			xorq TEMP_REG, TEMP_REG;					\
-			tzcnt OFFSET ## (CNTR_PTR), TEMP_REG;		\
+			lzcnt OFFSET ## (CNTR_PTR), TEMP_REG;		\
 			subq SUBQ_ONE, TEMP_REG;					\
 			addq TEMP_REG, RETR_REG;
 
