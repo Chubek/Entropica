@@ -2,6 +2,8 @@
 
 	.global entropica_count_bytes_til_newl
 	.global entropica_get_freqs
+	.global get_len_from_countarray
+	.global sum_log2_freq_get_entropy
 
 
 .text
@@ -40,10 +42,10 @@
 		#define MAGC_PTR %rdx
 		#define CNTR_REG %rcx
 		#define CNTR_WRD %ecx
-		#define CNTR_BYT %cl
 		#define ACCM_REG %rax
 		#define ACCM_LOW %al
-		#define NSEQ_LOW %dl
+		#define DIVN_QWD %rsi
+		#define DIVN_LOW %sil
 		#define MAGC_REG %r10
 		#define SHR1_REG %r8
 		#define SHR2_REG %r9
@@ -55,7 +57,6 @@
 		#define UI16_BIT $16
 		#define UI08_BIT $8
 		#define UI04_BIT $4
-		#define DECA_SH1 $1
 		#define DECA_SH3 $3
 		#define NUCL_ADN 65
 		#define NUCL_CYT 67
@@ -64,7 +65,6 @@
 		#define LWRD_BIT 4
 
 		xorq CNTR_REG, CNTR_REG
-		xorq ACCM_REG, ACCM_REG
 
 		movl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_WRD
 		movq CNTR_REG, MAGC_REG
@@ -79,31 +79,34 @@
 		shrq UI08_BIT, MAGC_REG
 		andq UI24_MAX, MAGC_REG
 
-		#define GETFREQ(OFFSET) 						\
+		#define MULTDECA								\
+			shlq ACCM_REG;								\
+			shlq DECA_SH3, DIVN_QWD;					\
+			addq ACCM_REG, DIVN_QWD;					\
+			movq DIVN_QWD, ACCM_REG;
+
+		#define GETFREQC(OFFSET) 						\
+			xorq ACCM_REG, ACCM_REG;					\
 			movb OFFSET ## (CNTR_PTR), ACCM_LOW;		\
-			movq ACCM_REG, NSEQ_LEN;					\
-			.rept 2 									\
-			shlq DECA_SH1, ACCM_REG;					\
-			shlq DECA_SH3, NSEQ_LEN;					\
-			addq ACCM_REG, NSEQ_LEN;					\
-			movq NSEQ_LEN, ACCM_REG;					\
-			.endr										\
+			movq ACCM_REG, DIVN_QWD;					\
+			MULTDECA									\
+			MULTDECA									\
 			mulq MAGC_REG;								\
 			shrq UI16_BIT, ACCM_REG;					\
 			andq UI16_MAX, ACCM_REG;					\
-			subq ACCM_REG, NSEQ_LEN;					\
+			subq ACCM_REG, DIVN_QWD;					\
 			movq SHR1_REG, CNTR_REG;					\
-			shrq CNTR_REG, NSEQ_LEN;					\
-			addq ACCM_REG, NSEQ_LEN;					\
+			shrq CNTR_REG, DIVN_QWD;					\
+			addq ACCM_REG, DIVN_QWD;					\
 			movq SHR2_REG, CNTR_REG;					\
-			shrq CNTR_REG, NSEQ_LEN;					\
-			movb NSEQ_LOW, OFFSET ## (CNTR_PTR);
+			shrq CNTR_REG, DIVN_QWD;					\
+			movb DIVN_LOW, OFFSET ## (CNTR_PTR);
 
 
-		GETFREQ(NUCL_ADN)
-		GETFREQ(NUCL_CYT)
-		GETFREQ(NUCL_GUA)
-		GETFREQ(NUCL_THY)
+		GETFREQC(NUCL_ADN)
+		GETFREQC(NUCL_CYT)
+		GETFREQC(NUCL_GUA)
+		GETFREQC(NUCL_THY)
 
 		ret
 
@@ -121,16 +124,78 @@
 		#undef UI16_BIT
 		#undef UI08_BIT
 		#undef UI04_BIT
-		#undef DECA_SH1
 		#undef DECA_SH3
 		#undef NUCL_ADN
 		#undef NUCL_CYT
 		#undef NUCL_GUA
 		#undef NUCL_THY
+		#undef LWRD_BIT
+		#undef DIVN_LOW
+		#undef DIVN_QWD
+
+		#undef MULTDECA
+		#undef GETFREQC
 
 
+	get_len_from_countarray:
+		#define CNTR_PTR %rdi
+		#define RETR_REG %rax
+		#define NUCL_ADN 65
+		#define NUCL_CYT 67
+		#define NUCL_GUA 71
+		#define NUCL_THY 84
+
+		xorq RETR_REG, REGR_REG
+
+		#define ADDNLEN(OFFSET) 					\
+			addq OFFSET ## (CNTR_PTR), RETR_REG;
+
+		ADDNLEN(NUCL_ADN)
+		ADDNLEN(NUCL_CYT)
+		ADDNLEN(NUCL_GUA)
+		ADDNLEN(NUCL_THY)
+
+		ret
+
+		#undef CNTR_PTR
+		#undef RETR_REG
+		#undef NUCL_ADN
+		#undef NUCL_CYT
+		#undef NUCL_GUA
+		#undef NUCL_THY
+
+	sum_log2_freq_get_entropy:
+		#define CNTR_PTR %rdi
+		#define RETR_REG %rax
+		#define TEMP_REG %r10
+		#define SUBQ_ONE $1
+		#define NUCL_ADN 65
+		#define NUCL_CYT 67
+		#define NUCL_GUA 71
+		#define NUCL_THY 84
+
+		xorq RETR_REG, RETR_REG
+		
+
+		#define COMPENT(OFFSET)							\
+			xorq TEMP_REG, TEMP_REG;					\
+			tzcnt OFFSET ## (CNTR_PTR), TEMP_REG;		\
+			subq SUBQ_ONE, TEMP_REG;					\
+			addq TEMP_REG, RETR_REG;
 
 
+		COMPENT(NUCL_ADN)
+		COMPENT(NUCL_CYT)
+		COMPENT(NUCL_GUA)
+		COMPENT(NUCL_THY)
 
-		main:
-			nop
+		ret
+
+		#undef CNTR_PTR
+		#undef RETR_REG
+		#undef TEMP_REG
+		#undef SUBQ_ONE
+		#undef NUCL_ADN
+		#undef NUCL_CYT
+		#undef NUCL_GUA
+		#undef NUCL_THY
