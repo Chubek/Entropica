@@ -99,8 +99,8 @@ if __name__ == "__main__":
         test_fast_division(dividend, divisor)
         exit(0)
 
-    def precompute_and_exit(exp: str):
-        magics = precompute_magic_single(divisor)
+    def precompute_and_exit(divisor: str):
+        magics = precompute_magic_single(int(divisor))
         sh1 = magics & 0b1111
         sh2 = (magics >> 4) & 0b1111
         m = (magics >> 8) & 0xffffff
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         pad = parse_or_default(arg, ["--pad", "-pd"], "08x", str)
         pretext = parse_or_default(
             arg, ["--pretext", "-px"], '#define ENTROPICA_MAGIC_NUM 1000\n', str)
-        prefix = parse_or_default(arg, ["--prefix", "-pr"], 'unsigned short UDIV_MAGICS[ENTROPICA_MAGIC_NUM] = {', str)
+        prefix = parse_or_default(arg, ["--prefix", "-pr"], 'unsigned int UDIV_MAGICS[ENTROPICA_MAGIC_NUM] = {', str)
         suffix = parse_or_default(arg, ["--suffix", "-sx"], '};', str)
         perline = parse_or_default(arg, ["--perline", "-pl"], 4)
         indent = parse_or_default(arg, ["--indent", "-id"], "\t", chr)
