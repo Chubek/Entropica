@@ -64,7 +64,6 @@
 
 #define SRCR_LOW %sil
 
-
 .data
 
 	.global count_bytes_til_newl
@@ -76,8 +75,8 @@
 	.global exit_process
 	.global allocate_shared_memory
 	.global unallocate_shared_memory
-	.global allocate_private_memory
-	.global unallocate_private_memory
+	.global allocate_pbreak_memory
+	.global unallocate_pbreak_memory
 	.global open_file_path
 	.global close_file_descriptor
 	.global read_multiple_buffers_from_file
@@ -85,6 +84,8 @@
 	.global write_nullterm_str_to_stdout
 	.global write_nullterm_str_to_stderr
 	.global get_file_size
+	.global ascii_to_integer
+	.global integer_to_ascii
 
 
 .text
@@ -119,12 +120,13 @@
 	detect_header:
 		#define BYTE_PTR CABI_AG0
 		#define BYTE_REG CLB1_LOW
+		#define QWRD_REG CLB1_QWD
 		#define RETR_RES CABI_RET
 		#define MARK_TRU $1
 		#define MARK_FLS $0
 		#define HEAD_CHR $62
 
-		xorq CLB1_DWD, CLB1_DWD
+		xorq QWRD_REG, QWRD_REG
 		movb (BYTE_PTR), BYTE_REG
 
 		cmp HEAD_CHR, BYTE_REG
@@ -173,6 +175,8 @@
 		#define NUCL_THY 84
 		#define LWRD_BIT 4
 
+		pushq SHR1_REG
+		pushq SHR2_REG
 
 		movzwl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_WRD
 		movq CNTR_REG, MAGC_REG
@@ -214,6 +218,9 @@
 		GETFREQC(NUCL_CYT)
 		GETFREQC(NUCL_GUA)
 		GETFREQC(NUCL_THY)
+
+		popq SHR2_REG
+		popq SHR1_REG
 
 		ret
 
@@ -355,10 +362,12 @@
 		#undef ALOC_LEN
 
 
-	allocate_private_memory:
+	allocate_pbreak_memory:
 		#define ALOC_LEN CABI_AG0
 		#define TEMP_REG CLB1_QWD
+		#define QWRD_NUM 8
 		#define NEGT_BRK $-1
+		#define QWRD_LEN $8
 
 		movq ALOC_LEN, TEMP_REG
 		movq NEGT_BRK, SYSC_AG0
@@ -366,31 +375,34 @@
 		syscall
 
 
+		addq QWRD_LEN, TEMP_REG
 		addq TEMP_REG, SYSC_RET
 		movq SYSC_RET, SYSC_AG0
 		movq SYSCNR_brk, SYSC_NRR
 		syscall
+
+		movq TEMP_REG, (SYSC_RET)
+		leaq QWRD_NUM(SYSC_RET), SYSC_REG
 
 		ret
 
 		#undef ALOC_LEN
 		#undef TEMP_REG
 		#undef NEGT_BRK
+		#undef QWRD_LEN
+		#undef QWRD_NUM
 
 		
-	unallocate_private_memory:
-		#define DLOC_LEN CABI_AG0
+	unallocate_pbreak_memory:
+		#define DLOC_PTR CABI_AG0
 		#define TEMP_REG CLB1_QWD
 		#define NEGT_BRK $-1
-		
-		movq DLOC_LEN, TEMP_REG
-		movq NEGT_BRK, SYSC_AG0
-		movq SYSCNR_brk, SYSC_NRR
-		syscall
+		#define QWRD_NUM -8
 
+		leaq QWRD_NUM(DLOC_PTR), DLOC_PTR
+		movq (DLOC_PTR), TEMP_REG
 
-		subq TEMP_REG, SYSC_RET
-		movq SYSC_RET, SYSC_AG0
+		subq TEMP_REG, DLOC_PTR
 		movq SYSCNR_brk, SYSC_NRR
 		syscall
 
@@ -398,7 +410,8 @@
 
 		#undef DLOC_LEN
 		#undef TEMP_REG
-		#undef NEGT_BRK4
+		#undef NEGT_BRK
+		#undef QWRD_NUM
 
 	open_file_path:
 		movq SYSCNR_open, SYSC_NRR
@@ -509,7 +522,87 @@
         #undef FRAM_PTR
         #undef STCK_PTR
 
+    ascii_to_integer:
+    	#define BYTE_PTR CABI_AG0
+    	#define RETR_REG CABI_RET
+    	#define BYTE_REG CLB1_DWD
+    	#define QWRD_REG CLB1_QWD
+    	#define TEMP_REG CLB2_QWD
+    	#define CNTR_REG CNTR_QWD
+    	#define DECA_SH1 $1
+    	#define DECA_SH2 $3
+    	#define DIGT_MAX $20
+    	#define ZERO_CHR $48
 
+   		movq DIGT_MAX, CNTR_QWD
+   	1:
+    	movzbl (BYTE_PTR), BYTE_REG
+    	andq QWRD_REG, QWRD_REG
+    	jz 2f
+    	incq BYTE_PTR
+    	movq RETR_REG, TEMP_REG
+    	shlq DECA_SH1, RETR_REG
+    	shlq DECA_SH2, TEMP_REG
+    	addq TEMP_REG, RETR_REG
+    	subq ZERO_CHR, QWRD_REG
+    	addq QWRD_REG, RETR_REG
+    	loop 1b
+
+    2:
+    	ret
+
+    	#undef BYTE_PTR
+    	#undef RETR_REG
+    	#undef BYTE_REG
+    	#undef QWRD_REG
+    	#undef TEMP_REG
+    	#undef CNTR_REG
+    	#undef DECA_SH1
+    	#undef DECA_SH2
+    	#undef DIGT_MAX
+    	#undef ZERO_CHR
+
+    integer_to_ascii:
+    	#define INTG_NUM CABI_AG0
+    	#define BYTE_PTR CABI_AG1
+    	#define REMN_REG CABI_AG2
+    	#define REMN_LOW SRCR_LOW
+    	#define DECA_REG CLB2_QWD
+    	#define CNTR_REG CNTR_QWD
+    	#define BYTE_REQ CLB1_LOW
+    	#define ACCM_REG ACCM_QWD
+    	#define DECA_NUM $10
+    	#define ZERO_CHR $48
+    	#define DIGT_MAX $20
+
+    	movq DECA_NUM, DECA_REG
+    	movq DIGT_MAX, CNTR_REG
+    1:
+    	movq INTG_NUM, ACCM_REG
+    	xorq REMN_REG, REMN_REG
+    	divq DEC_REG
+    	test ACCM_REG, ACCM_REG
+    	jz 2f
+    	addq ZER_CHR, REMN_REG
+    	movb REMN_REG, (BYTE_PTR)
+    	incq BYTE_PTR
+    	movq ACCM_REG, INTG_NUM
+    	loop 1b
+
+    2:
+    	ret
+
+    	#undef INTG_NUM
+    	#undef BYTE_PTR
+    	#undef REMN_REG
+    	#undef REMN_LOW
+    	#undef DECA_REG
+    	#undef CNTR_REG
+    	#undef BYTE_REQ
+    	#undef ACCM_REG
+    	#undef DECA_NUM
+    	#undef ZERO_CHR
+    	#undef DIGT_MAX
 
 
 #undef SYSCNR_read
