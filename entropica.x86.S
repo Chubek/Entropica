@@ -62,10 +62,16 @@
 #define CSV2_WRD %r9w
 #define CSV2_LOW %r9b
 
-#define SRCR_QWD %rdx
-#define SRCR_DWD %edx
-#define SRCR_WRD %dx
+#define SRCR_QWD %rsi
+#define SRCR_DWD %esi
+#define SRCR_WRD %si
 #define SRCR_LOW %sil
+
+#define DATA_QWD %rdx
+#define DATA_DWD %edx
+#define DATA_WRD %dx
+#define DATA_LOB %dl
+#define DATA_HIB %dh
 
 #define DEST_QWD %rdi
 #define DEST_DWD %edi
@@ -77,6 +83,7 @@
 
 	.global count_bytes_til_newl
 	.global hash_bytes_til_newl
+	.global write_entropy_to_hashtable
 	.global detect_header
 	.global get_freqs
 	.global get_len_from_countarray
@@ -193,16 +200,16 @@
 		#undef NEWL_CHR
 		#undef HWRD_NUM
 		#undef DWRD_LEN
-		
 
-	write_entropy_to_hashtble:
-		#define HASH_SEQ CABI_AG0
-		#define ENTR_SEQ CABI_AG1
+
+	write_entropy_to_hashtable:
+		#define ENTR_SEQ CABI_AG0
+		#define HASH_SEQ CABI_AG1
 		#define HASH_TAB CABI_AG2
-		#define SHSH_WRD DEST_WRD
+		#define ENTR_WRD DEST_WRD
 		#define HWRD_NUM 2
 
-		movw SHSH_WRD, (HASH_TAB, HASH_SEQ, HWRD_NUM)
+		movw ENTR_WRD, (HASH_TAB, HASH_SEQ, HWRD_NUM)
 
 		ret
 
@@ -211,6 +218,7 @@
 		#undef HASH_TAB
 		#undef SHSH_WRD
 		#undef HWRD_NUM
+
 
 	detect_header:
 		#define BYTE_PTR CABI_AG0
@@ -661,10 +669,11 @@
     	#define DIGT_MAX $20
     	#define ZERO_CHR $48
 
-   		movq DIGT_MAX, CNTR_QWD
+   		movq DIGT_MAX, CNTR_REG
+   		xorq RETR_REG, RETR_REG
    	1:
     	movzbl (BYTE_PTR), BYTE_REG
-    	andq QWRD_REG, QWRD_REG
+    	testq QWRD_REG, QWRD_REG
     	jz 2f
     	incq BYTE_PTR
     	movq RETR_REG, TEMP_REG
@@ -692,8 +701,8 @@
     integer_to_ascii:
     	#define INTG_NUM CABI_AG0
     	#define BYTE_PTR CABI_AG1
-    	#define REMN_REG CABI_AG2
-    	#define REMN_LOW SRCR_LOW
+    	#define REMN_REG DATA_QWD
+    	#define REMN_LOW DATA_LOB
     	#define DECA_REG CLB2_QWD
     	#define CNTR_REG CNTR_QWD
     	#define BYTE_REG CLB1_LOW
@@ -701,19 +710,28 @@
     	#define DECA_NUM $10
     	#define ZERO_CHR $48
     	#define DIGT_MAX $20
+    	#define NEGT_OFS -1
 
     	movq DECA_NUM, DECA_REG
-    	movq DIGT_MAX, CNTR_REG
+    	movq INTG_NUM, ACCM_REG
+    	xorq CNTR_REG, CNTR_REG
+    3:
+    	xorq REMN_REG, REMN_REG
+    	divq DECA_REG
+    	incq CNTR_REG
+    	testq ACCM_REG, ACCM_REG
+    	jz 1f
+    	jmp 3b
+
     1:
     	movq INTG_NUM, ACCM_REG
     	xorq REMN_REG, REMN_REG
     	divq DECA_REG
-    	test ACCM_REG, ACCM_REG
-    	jz 2f
     	addq ZERO_CHR, REMN_REG
-    	movb REMN_LOW, (BYTE_PTR)
-    	incq BYTE_PTR
+    	movb REMN_LOW, NEGT_OFS(BYTE_PTR, CNTR_REG)
     	movq ACCM_REG, INTG_NUM
+    	testq ACCM_REG, ACCM_REG
+    	jz 2f
     	loop 1b
 
     2:
@@ -801,6 +819,12 @@
 #undef SRCR_DWD
 #undef SRCR_WRD
 #undef SRCR_LOW
+
+#undef DATA_QWD
+#undef DATA_DWD
+#undef DATA_WRD
+#undef DATA_LOB
+#undef DATA_HIB
 
 #undef DEST_QWD
 #undef DEST_DWD
