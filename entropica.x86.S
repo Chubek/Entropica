@@ -10,6 +10,9 @@
 #define SYSCNR_fork $57
 #define SYSCNR_exit $60
 
+#define SYSCID_stdout $1
+#define SYSCID_stderr $2
+
 #define SYSC_NRR %rax
 #define SYSC_RET %rax
 #define SYSC_AG0 %rdi
@@ -19,10 +22,12 @@
 #define SYSC_AG4 %r8
 #define SYSC_AG5 %r9
 
+
+
 .data
 
-	.global entropica_count_bytes_til_newl
-	.global entropica_get_freqs
+	.global count_bytes_til_newl
+	.global get_freqs
 	.global get_len_from_countarray
 	.global sum_log2_freq_get_entropy
 	.global fork_process
@@ -35,10 +40,12 @@
 	.global close_file_descriptor
 	.global read_multiple_buffers_from_file
 	.global write_buffer_to_file
+	.global write_nullterm_str_to_stdout
+	.global write_nullterm_str_to_stderr
 
 
 .text
-	entropica_count_bytes_til_newl:
+	count_bytes_til_newl:
 		#define BYTE_PTR %rdi
 		#define CNTR_PTR %rsi
 		#define CNTR_REG %rcx
@@ -66,7 +73,7 @@
 		#undef NEWL_CHR
 
 
-	entropica_get_freqs:
+	get_freqs:
 		#define CNTR_PTR %rdi
 		#define NSEQ_LEN %rsi
 		#define MAGC_PTR %rdx
@@ -345,3 +352,75 @@
 		syscall
 
 		ret
+
+	write_nullterm_str_to_stdout:
+		#define STRN_PTR %rdi
+		#define STRN_TMP %r11
+		#define BYTE_REG %r11b
+		#define DWRD_REG %r11
+
+		xorq DWRD_REG, DWRD_REG
+		movq STRN_PTR, STRN_TMP
+	1:
+		movb (STRN_TMP), BYTE_REG
+		incq STRN_TMP
+		test DWRD_REG, DWRD_REG
+		jz 2f
+		jmp 1b
+	2:
+		movq STRN_TMP, SYSC_AG2
+		subq STRN_PTR, SYSC_AG2
+		movq STRN_PTR, SYSC_AG1
+		movq SYSCID_stdout, SYSC_NRR
+		syscall
+
+		ret
+
+	write_nullterm_str_to_stderr:
+		#define STRN_PTR %rdi
+		#define STRN_TMP %r11
+		#define BYTE_REG %r11b
+		#define DWRD_REG %r11
+
+		xorq DWRD_REG, DWRD_REG
+		movq STRN_PTR, STRN_TMP
+	1:
+		movb (STRN_TMP), BYTE_REG
+		incq STRN_TMP
+		test DWRD_REG, DWRD_REG
+		jz 2f
+		jmp 1b
+	2:
+		movq STRN_TMP, SYSC_AG2
+		subq STRN_PTR, SYSC_AG2
+		movq STRN_PTR, SYSC_AG1
+		movq SYSCID_stderr, SYSC_NRR
+		syscall
+
+		ret
+
+
+
+#undef SYSCNR_read
+#undef SYSCNR_write
+#undef SYSCNR_open
+#undef SYSCNR_close
+#undef SYSCNR_fstat
+#undef SYSCNR_mmap
+#undef SYSCNR_munmap
+#undef SYSCNR_brk
+#undef SYSCNR_readv
+#undef SYSCNR_fork
+#undef SYSCNR_exit
+
+#undef SYSCID_stdout
+#undef SYSCID_stderr
+
+#undef SYSC_NRR
+#undef SYSC_RET
+#undef SYSC_AG0
+#undef SYSC_AG1
+#undef SYSC_AG2
+#undef SYSC_AG3
+#undef SYSC_AG4
+#undef SYSC_AG5
