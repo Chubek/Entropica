@@ -329,10 +329,15 @@
 
 	allocate_shared_memory:
 		#define ALOC_LEN CABI_AG0
+		#define ALCL_REG CLB1_QWD
 		#define PROT_RWX $7
 		#define FLAG_SHA $33
 		#define NULL_FLD $-1
+		#define QWRD_LEN $8
+		#define QWRD_NUM 8
 
+		movq ALOC_LEN, ALCL_REG
+		addq QWRD_LEN, ALOC_LEN
 		movq ALOC_LEN, SYSC_AG1
 		xorq SYSC_AG0, SYSC_AG0
 		movq PROT_RWX, SYSC_AG2
@@ -341,17 +346,28 @@
 		xorq SYSC_AG5, SYSC_AG5
 		syscall
 
+		movq ALCL_REG, (SYSC_REG)
+		leaq QWRD_NUM(SYSC_REG), SYSC_REG
+
 		ret
 
 		#undef ALOC_LEN
 		#undef PROT_RWX
 		#undef FLAG_SHA
 		#undef NULL_FLD
+		#undef ALCL_REG
+		#undef QWRD_LEN
+		#undef QWRD_NUM
 
 
 	unallocate_shared_memory:
 		#define ALOC_PTR CABI_AG0
-		#define ALOC_LEN CABI_AG1
+		#define ALCL_REG SYSC_AG1
+		#define QWRD_NUM -8
+		#define QWRD_LEN $8
+
+		movq QWRD_NUM(ALOC_PTR), ALCL_LEN
+		addq QWRD_LEN, ALCL_LEN
 
 		movq SYSCNR_munmap, SYSC_NRR
 		syscall
@@ -359,8 +375,9 @@
 		ret
 
 		#undef ALOC_PTR
-		#undef ALOC_LEN
-
+		#undef ALCL_REG
+		#undef QWRD_NUM
+		#undef QWRD_LEN
 
 	allocate_pbreak_memory:
 		#define ALOC_LEN CABI_AG0
@@ -398,9 +415,11 @@
 		#define TEMP_REG CLB1_QWD
 		#define NEGT_BRK $-1
 		#define QWRD_NUM -8
+		#define QWRD_LEN $8
 
 		leaq QWRD_NUM(DLOC_PTR), DLOC_PTR
 		movq (DLOC_PTR), TEMP_REG
+		addq QWRD_LEN, TEMP_REG
 
 		subq TEMP_REG, DLOC_PTR
 		movq SYSCNR_brk, SYSC_NRR
@@ -412,6 +431,7 @@
 		#undef TEMP_REG
 		#undef NEGT_BRK
 		#undef QWRD_NUM
+		#undef QWRD_LEN
 
 	open_file_path:
 		movq SYSCNR_open, SYSC_NRR
