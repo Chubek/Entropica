@@ -62,11 +62,21 @@
 #define CSV2_WRD %r9w
 #define CSV2_LOW %r9b
 
+#define SRCR_QWD %rdx
+#define SRCR_DWD %edx
+#define SRCR_WRD %dx
 #define SRCR_LOW %sil
+
+#define DEST_QWD %rdi
+#define DEST_DWD %edi
+#define DEST_WRD %di
+#define DEST_LOB %dl
+#define DEST_HIB %dh
 
 .data
 
 	.global count_bytes_til_newl
+	.global hash_bytes_til_newl
 	.global detect_header
 	.global get_freqs
 	.global get_len_from_countarray
@@ -118,6 +128,90 @@
 		#undef NEWL_CHR
 
 
+	hash_bytes_til_newl:
+		#define CHAR_BUF CABI_AG0
+		#define PERM_TAB CABI_AG1
+		#define RETR_LOW ACCM_LOB
+		#define RETR_WRD ACCM_WRD
+		#define RETR_DWD ACCM_DWD
+		#define BYTE_REG SRCR_DWD
+		#define BYTE_WRD SRCR_WRD
+		#define TEMP_REG CLB1_QWD
+		#define TEMP_DWD CLB1_DWD
+		#define TEMP_WRD CLB1_WRD
+		#define INDX_REG CLB2_QWD
+		#define INDX_DWD CLB2_DWD
+		#define INDX_WRD CLB2_WRD
+		#define CNTR_REG CNTR_QWD
+		#define RETR_REG CABI_RET
+		#define BYTE_LEN $1
+		#define NEWL_CHR $10
+		#define HWRD_NUM 2
+		#define DWRD_LEN $4
+
+		movq CHAR_BUF, TEMP_REG
+	1:
+		movzbl (CHAR_BUF), BYTE_REG
+		cmpl NEWL_CHR, BYTE_REG
+		je 2f
+		incq CHAR_BUF
+		jmp 1b
+
+	2:
+		subq TEMP_REG, CHAR_BUF
+		movq CHAR_BUF, RETR_REG
+		movq CHAR_BUF, CNTR_REG
+		subq BYTE_LEN, CNTR_REG
+		movq TEMP_REG, CHAR_BUF
+		xorq TEMP_REG, TEMP_REG
+	3:
+		movzwl (CHAR_BUF, CNTR_REG), BYTE_REG
+		xorw BYTE_WRD, RETR_WRD
+		movzwl RETR_WRD, INDX_DWD
+		shrq DWRD_LEN, INDX_REG
+		movzwl (PERM_TAB, INDX_REG, HWRD_NUM), RETR_DWD
+		loop 3b
+
+		ret
+
+		#undef CHAR_BUF
+		#undef PERM_TAB
+		#undef RETR_LOW
+		#undef RETR_WRD
+		#undef RETR_DWD
+		#undef BYTE_REG
+		#undef BYTE_WRD
+		#undef TEMP_REG
+		#undef TEMP_DWD
+		#undef TEMP_WRD
+		#undef INDX_REG
+		#undef INDX_DWD
+		#undef INDX_WRD
+		#undef CNTR_REG
+		#undef RETR_REG
+		#undef BYTE_LEN
+		#undef NEWL_CHR
+		#undef HWRD_NUM
+		#undef DWRD_LEN
+		
+
+	write_entropy_to_hashtble:
+		#define HASH_SEQ CABI_AG0
+		#define ENTR_SEQ CABI_AG1
+		#define HASH_TAB CABI_AG2
+		#define SHSH_WRD DEST_WRD
+		#define HWRD_NUM 2
+
+		movw SHSH_WRD, (HASH_TAB, HASH_SEQ, HWRD_NUM)
+
+		ret
+
+		#undef HASH_SEQ
+		#undef ENTR_SEQ
+		#undef HASH_TAB
+		#undef SHSH_WRD
+		#undef HWRD_NUM
+
 	detect_header:
 		#define BYTE_PTR CABI_AG0
 		#define BYTE_REG CLB1_LOW
@@ -152,7 +246,7 @@
 		#define NSEQ_LEN CABI_AG1
 		#define MAGC_PTR CABI_AG2
 		#define CNTR_REG CNTR_QWD
-		#define CNTR_WRD CNTR_DWD
+		#define CNTR_DWR CNTR_DWD
 		#define ACCM_REG ACCM_QWD
 		#define ACCM_MID ACCM_DWD
 		#define ACCM_LOW ACCM_LOB
@@ -179,7 +273,7 @@
 		pushq SHR1_REG
 		pushq SHR2_REG
 
-		movzwl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_WRD
+		movzwl (MAGC_PTR, NSEQ_LEN, LWRD_BIT), CNTR_DWR
 		movq CNTR_REG, MAGC_REG
 		movq CNTR_REG, SHR1_REG
 		movq CNTR_REG, SHR2_REG
@@ -229,6 +323,7 @@
 		#undef NSEQ_LEN
 		#undef MAGC_PTR
 		#undef CNTR_REG
+		#undef CNTR_DWR
 		#undef ACCM_REG
 		#undef MAGC_REG
 		#undef SHR1_REG
@@ -347,8 +442,8 @@
 		xorq SYSC_AG5, SYSC_AG5
 		syscall
 
-		movq ALCL_REG, (SYSC_REG)
-		leaq QWRD_NUM(SYSC_REG), SYSC_REG
+		movq ALCL_REG, (SYSC_RET)
+		leaq QWRD_NUM(SYSC_RET), SYSC_RET
 
 		ret
 
@@ -367,8 +462,8 @@
 		#define QWRD_NUM -8
 		#define QWRD_LEN $8
 
-		movq QWRD_NUM(ALOC_PTR), ALCL_LEN
-		addq QWRD_LEN, ALCL_LEN
+		movq QWRD_NUM(ALOC_PTR), ALCL_REG
+		addq QWRD_LEN, ALCL_REG
 
 		movq SYSCNR_munmap, SYSC_NRR
 		syscall
@@ -400,7 +495,7 @@
 		syscall
 
 		movq TEMP_REG, (SYSC_RET)
-		leaq QWRD_NUM(SYSC_RET), SYSC_REG
+		leaq QWRD_NUM(SYSC_RET), SYSC_RET
 
 		ret
 
@@ -530,7 +625,7 @@
 		#define FILE_DSC CABI_AG0
 		#define RETR_REG CABI_RET
 		#define STAT_LEN $144
-		#define SIZE_OFS $48
+		#define SIZE_OFS 48
 		#define FRAM_PTR %rbp
 		#define STCK_PTR %rsp
 
@@ -538,7 +633,7 @@
 		movq STCK_PTR, FRAM_PTR
 		subq STAT_LEN, FRAM_PTR
 
-		leaq FRAM_PTR, SYSC_AG1
+		leaq (FRAM_PTR), SYSC_AG1
 		movq SYSCNR_fstat, SYSC_NRR
 		syscall
 
@@ -601,7 +696,7 @@
     	#define REMN_LOW SRCR_LOW
     	#define DECA_REG CLB2_QWD
     	#define CNTR_REG CNTR_QWD
-    	#define BYTE_REQ CLB1_LOW
+    	#define BYTE_REG CLB1_LOW
     	#define ACCM_REG ACCM_QWD
     	#define DECA_NUM $10
     	#define ZERO_CHR $48
@@ -612,11 +707,11 @@
     1:
     	movq INTG_NUM, ACCM_REG
     	xorq REMN_REG, REMN_REG
-    	divq DEC_REG
+    	divq DECA_REG
     	test ACCM_REG, ACCM_REG
     	jz 2f
-    	addq ZER_CHR, REMN_REG
-    	movb REMN_REG, (BYTE_PTR)
+    	addq ZERO_CHR, REMN_REG
+    	movb REMN_LOW, (BYTE_PTR)
     	incq BYTE_PTR
     	movq ACCM_REG, INTG_NUM
     	loop 1b
@@ -635,6 +730,7 @@
     	#undef DECA_NUM
     	#undef ZERO_CHR
     	#undef DIGT_MAX
+
 
 
 #undef SYSCNR_read
@@ -701,4 +797,13 @@
 #undef CSV2_WRD 
 #undef CSV2_LOW 
 
-#undef SRCR_LOW 
+#undef SRCR_QWD
+#undef SRCR_DWD
+#undef SRCR_WRD
+#undef SRCR_LOW
+
+#undef DEST_QWD
+#undef DEST_DWD
+#undef DEST_WRD
+#undef DEST_LOB
+#undef DEST_HIB
