@@ -28,6 +28,7 @@
 #define CABI_AG3 %rcx
 #define CABI_AG4 %r8
 #define CABI_AG5 %r9
+#define CABI_RET %rax
 
 #define CNTR_QWD %rcx
 #define CNTR_DWD %ecx
@@ -67,6 +68,7 @@
 .data
 
 	.global count_bytes_til_newl
+	.global detect_header
 	.global get_freqs
 	.global get_len_from_countarray
 	.global sum_log2_freq_get_entropy
@@ -113,6 +115,34 @@
 		#undef DWRD_REG
 		#undef NEWL_CHR
 
+
+	detect_header:
+		#define BYTE_PTR CABI_AG0
+		#define BYTE_REG CLB1_LOW
+		#define RETR_RES CABI_RET
+		#define MARK_TRU $1
+		#define MARK_FLS $0
+		#define HEAD_CHR $62
+
+		xorq CLB1_DWD, CLB1_DWD
+		movb (BYTE_PTR), BYTE_REG
+
+		cmp HEAD_CHR, BYTE_REG
+		je 2f
+
+		movq MARK_FLS, RETR_RES
+	1:
+		ret
+	2:
+		movq MARK_TRU, RETR_RES
+		jmp 1b
+
+	    #undef BYTE_PTR
+        #undef BYTE_REG
+        #undef RETR_RES
+        #undef MARK_TRU
+        #undef MARK_FLS
+        #undef HEAD_CHR
 
 	get_freqs:
 		#define CNTR_PTR CABI_AG0
@@ -216,7 +246,7 @@
 
 	get_len_from_countarray:
 		#define CNTR_PTR CABI_AG0
-		#define RETR_REG ACCM_QWD
+		#define RETR_REG CABI_RET
 		#define NUCL_ADN 65
 		#define NUCL_CYT 67
 		#define NUCL_GUA 71
@@ -243,7 +273,7 @@
 
 	sum_log2_freq_get_entropy:
 		#define CNTR_PTR CABI_AG0
-		#define RETR_REG ACCM_QWD
+		#define RETR_REG CABI_RET
 		#define TEMP_REG CLB1_QWD
 		#define SUBQ_ONE $1
 		#define NUCL_ADN 65
@@ -453,7 +483,7 @@
 
 	get_file_size:
 		#define FILE_DSC CABI_AG0
-		#define RETR_REG ACCM_QWD
+		#define RETR_REG CABI_RET
 		#define STAT_LEN $144
 		#define SIZE_OFS $48
 		#define FRAM_PTR %rbp
@@ -512,6 +542,7 @@
 #undef CABI_AG3 
 #undef CABI_AG4 
 #undef CABI_AG5 
+#undef CABI_RET
 
 #undef CNTR_QWD 
 #undef CNTR_DWD 
