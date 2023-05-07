@@ -104,6 +104,9 @@
 	.global get_file_size
 	.global ascii_to_integer
 	.global integer_to_ascii
+	.global signal_semaphore_green
+	.global signal_semaphore_red
+	.global signal_semaphore_yellow
 
 
 .text
@@ -748,6 +751,46 @@
     	#undef DECA_NUM
     	#undef ZERO_CHR
     	#undef DIGT_MAX
+
+    signal_semaphore_green:
+    	#define SEMA_PTR CABI_AG0
+    	#define PROC_OFS CABI_AG1
+    	#define SIGN_GRN $0xff
+
+    	movb SIGN_GRN, (SEMA_PTR, PROC_OFS)
+
+    	ret
+
+    	#undef SEMA_PTR
+    	#undef PROC_OFS
+    	#undef SIGN_GRN
+
+    signal_semaphore_red:
+    	#define SEMA_PTR CABI_AG0
+    	#define PROC_OFS CABI_AG1
+    	#define SIGN_RED $0xfc
+
+    	movb SIGN_RED, (SEMA_PTR, PROC_OFS)
+
+    	ret
+
+    	#undef SEMA_PTR
+    	#undef PROC_OFS
+    	#undef SIGN_RED
+
+    signal_semaphore_yellow:
+    	#define SEMA_PTR CABI_AG0
+    	#define PROC_OFS CABI_AG1
+    	#define SIGN_YEL $0xfa
+
+    	movb SIGN_YEL, (SEMA_PTR, PROC_OFS)
+
+    	ret
+
+    	#undef SEMA_PTR
+    	#undef PROC_OFS
+    	#undef SIGN_YEL
+
 
 
 
