@@ -3,10 +3,10 @@
 #define SYSCNR_open $2
 #define SYSCNR_close $3
 #define SYSCNR_fstat $5
+#define SYSCNR_lseek $8
 #define SYSCNR_mmap $9
 #define SYSCNR_munmap $11
 #define SYSCNR_brk $12
-#define SYSCNR_readv $19
 #define SYSCNR_fork $57
 #define SYSCNR_exit $60
 
@@ -78,8 +78,9 @@
 	.global allocate_pbreak_memory
 	.global unallocate_pbreak_memory
 	.global open_file_path
+	.global seek_file_from_start
 	.global close_file_descriptor
-	.global read_multiple_buffers_from_file
+	.global read_buffer_from_file
 	.global write_buffer_to_file
 	.global write_nullterm_str_to_stdout
 	.global write_nullterm_str_to_stderr
@@ -445,8 +446,8 @@
 
 		ret
 
-	read_multiple_buffers_from_file:
-		movq SYSCNR_readv, SYSC_NRR
+	read_buffer_from_file:
+		movq SYSCNR_read, SYSC_NRR
 		syscall
 
 		ret
@@ -456,6 +457,17 @@
 		syscall
 
 		ret
+
+	seek_file_from_start:
+		#define SEEK_SET SYSC_AG2
+
+		xorq SEEK_SET, SEEK_SET
+		movq SYSCNR_lseek, SYSC_NRR
+		syscall
+
+		ret
+
+		#undef SEEK_SET
 
 	write_nullterm_str_to_stdout:
 		#define STRN_PTR CABI_AG0
@@ -630,10 +642,10 @@
 #undef SYSCNR_open
 #undef SYSCNR_close
 #undef SYSCNR_fstat
+#undef SYSCNR_lseek
 #undef SYSCNR_mmap
 #undef SYSCNR_munmap
 #undef SYSCNR_brk
-#undef SYSCNR_readv
 #undef SYSCNR_fork
 #undef SYSCNR_exit
 
