@@ -100,12 +100,6 @@ extern entropica_procid_t fork_process();
 
 
 entropica_semtable_t allocate_semtable();
-entropica_nonyieldt_t unallocate_semtable(entropica_semtable_t semtable);
-
 entropica_hashtable_t alloate_hashtable();
-entropica_nonyield_t unallocate_hashtable(entropica_hashtable_t hashtable);
-
 entropica_fofsttable_t alloate_fofsttable();
-entropica_nonyield_t unallocate_hashtable(entropica_fofsttable_t fofsttable);
-
 entropica_readctx_t new_read_context(entropica_filepath_t filepath);
