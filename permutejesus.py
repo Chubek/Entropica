@@ -5,7 +5,7 @@ def lcg(m=255, inc=75, mult=74) -> int:
 
 def generate_and_format_range(m=255, inc=75, mult=74, num=255, 
 	prefix="unsigned char PERMUTE_HASH[PERMUTE_NUM] = {", suffix="};", split=8, pretext=""):
-	generated =  ["\t0x" + format(lcg(m, inc, mult), "02x") for _ in range(num)]
+	generated =  ["\t0x" + format(lcg(m, inc, mult), "04x") for _ in range(num)]
 	joined = ", \n".join(generated)
 	return "\n".join([pretext, prefix, joined, suffix])
 
@@ -31,10 +31,10 @@ if __name__ == "__main__":
         return fn(arg.split("=")[-1]) if any([arg.startswith(s) for s in patt]) else default
 
     for arg in argv:
-        increment = parse_or_default(arg, ["--increment", "-inc"], 75)
-        multiplier = parse_or_default(arg, ["--multiplier", "-mul"], 74)
-        modulo = parse_or_default(arg, ["--modulo", "-mod"], 255)
-        number = parse_or_default(arg, ["--number", "-num"], 255)
+        increment = parse_or_default(arg, ["--increment", "-inc"], 3947)
+        multiplier = parse_or_default(arg, ["--multiplier", "-mul"], 3946)
+        modulo = parse_or_default(arg, ["--modulo", "-mod"], 4096)
+        number = parse_or_default(arg, ["--number", "-num"], 4096)
         split = parse_or_default(arg, ["--split", "-sp"], 8)
         prefix = parse_or_default(arg, ["--prefix", "-px"], "entropica_permutable_t PERMUTE_TABLE = {", str)
         suffix = parse_or_default(arg, ["--suffix", "-sx"], "};", str)
