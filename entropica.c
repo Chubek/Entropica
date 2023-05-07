@@ -18,13 +18,17 @@ entropica_fofsttable_t allocate_fofsttable() {
 }
 
 
-entropica_readctx_t new_read_context(entropica_filepath_t filepath, entropica_procnum_t numprocesses) {
-	entropica_filedsc_t filedescriptor = open_file_path(filepath);
+entropica_readctx_t new_read_context(entropica_filepath_t inputfile, entropica_filepath_t outputfile, entropica_procnum_t numprocesses) {
+	entropica_filedsc_t inpfiledescriptor = open_file_path(inputfile, 0);
+	entropica_filedsc_t outpfiledescriptor = open_file_path(outputfile, 0);
+	entropica_filesize_t filesize = get_file_size(filedescriptor);
 	entropica_semtable_t signals = allocate_semtable();
 	entropica_hashtable_t entropyresults = allocate_hashtable();
 	entropica_fofsttable_t fileoffsets = allocate_fofstable();
 	return (entropica_readctx_t){
-		.filedescriptor = filedescriptor,
+		.inpfiledescriptor = inpfiledescriptor,
+		.outpfiledescriptor = outpfiledescriptor,
+		.filesize = filesize,
 		.numprocecesses = numprocecesses,
 		.entropyresults = entropyresults,
 		.signals = signals,
@@ -34,8 +38,10 @@ entropica_readctx_t new_read_context(entropica_filepath_t filepath, entropica_pr
 
 
 entropica_nonyield_t destroy_read_context(entropica_readctx_t *context) {
-	close_file_descriptor(context->filedescriptor);
+	close_file_descriptor(context->inpfiledescriptor);
+	close_file_descriptor(context->outpfiledescriptor);
 	unallocate_shared_memory(context->entropyresults);
 	unallocate_shared_memory(context->signals);
 	unallocate_shared_memory(context->fileoffsets);
 }
+

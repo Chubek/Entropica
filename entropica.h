@@ -65,7 +65,9 @@ typedef unsigned long entropica_readnum_t;
 typedef unsigned long entropica_writenum_t;
 
 typedef struct EntropicaFastaReadContext {
-	entropica_filedsc_t filedescriptor;
+	entropica_filedsc_t inpfiledescriptor;
+	entropica_filedsc_t outpfiledescriptor;
+	entropica_filesize_t filesize;
 	entropica_procnum_t numprocecesses;
 	entropica_hashtable_t entropyresults;
 	entropica_semtable_t signals;
@@ -103,3 +105,4 @@ entropica_semtable_t allocate_semtable();
 entropica_hashtable_t alloate_hashtable();
 entropica_fofsttable_t alloate_fofsttable();
 entropica_readctx_t new_read_context(entropica_filepath_t filepath);
+entropica_nonyield_t destroy_read_context(entropica_readctx_t *context);
