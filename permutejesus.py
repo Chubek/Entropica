@@ -5,7 +5,7 @@ def lcg(m=255, inc=75, mult=74) -> int:
 
 def generate_and_format_range(m=255, inc=75, mult=74, num=255, 
 	prefix="unsigned char PERMUTE_HASH[PERMUTE_NUM] = {", suffix="};", split=8, pretext=""):
-	generated =  ["\t0x" + format(lcg(m, inc, mult), "02x") for _ in range(0, num, split)]
+	generated =  ["\t0x" + format(lcg(m, inc, mult), "02x") for _ in range(num)]
 	joined = ", \n".join(generated)
 	return "\n".join([pretext, prefix, joined, suffix])
 
