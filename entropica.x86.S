@@ -7,8 +7,12 @@
 #define SYSCNR_mmap $9
 #define SYSCNR_munmap $11
 #define SYSCNR_brk $12
+#define SYSCNR_rt_sigaction $13
+#define SYSCNR_getpid $39
 #define SYSCNR_fork $57
 #define SYSCNR_exit $60
+#define SYSCNR_wait4 $61
+#define SYSCNR_kill $62
 
 #define SYSCID_stdout $1
 #define SYSCID_stderr $2
@@ -42,6 +46,16 @@
 #define ACCM_LOB %al
 #define ACCM_HIB %ah
 
+#define STPT_QWD %rsp
+#define STPT_DWD %esp
+#define STPT_WRD %sp
+#define STPT_LOW %spl
+
+#define FPPT_QWD %rbp
+#define FPPT_DWD %ebp
+#define FPPT_WRD %bp
+#define FPPT_LOW %bpl
+
 #define CLB1_QWD %r10
 #define CLB1_DWD %r10d
 #define CLB1_WRD %r10w
@@ -62,6 +76,26 @@
 #define CSV2_WRD %r9w
 #define CSV2_LOW %r9b
 
+#define CSV3_QWD %r12
+#define CSV3_DWD %r12d
+#define CSV3_WRD %r12w
+#define CSV3_LOW %r12b
+
+#define CSV4_QWD %r13
+#define CSV4_DWD %r13d
+#define CSV4_WRD %r13w
+#define CSV4_LOW %r13b
+
+#define CSV5_QWD %r14
+#define CSV5_DWD %r14d
+#define CSV5_WRD %r14w
+#define CSV5_LOW %r14b
+
+#define CSV6_QWD %r15
+#define CSV6_DWD %r15d
+#define CSV6_WRD %r15w
+#define CSV6_LOW %r15b
+
 #define SRCR_QWD %rsi
 #define SRCR_DWD %esi
 #define SRCR_WRD %si
@@ -78,6 +112,12 @@
 #define DEST_WRD %di
 #define DEST_LOB %dl
 #define DEST_HIB %dh
+
+#define BASE_QWD %rbx
+#define BASE_DWD %ebx
+#define BASE_WRD %bx
+#define BASE_LOB %bl
+#define BASE_HIB %bh
 
 .data
 
@@ -107,6 +147,12 @@
 	.global signal_semaphore_green
 	.global signal_semaphore_red
 	.global signal_semaphore_yellow
+	.global signal_action_handler_function
+	.global signal_action_ignore
+	.global signal_action_default
+	.global wait_and_see_if_child_exited
+	.global wait_and_see_if_child_continued
+	.global wait_and_see_if_child_stopped
 
 
 .text
@@ -637,8 +683,8 @@
 		#define RETR_REG CABI_RET
 		#define STAT_LEN $144
 		#define SIZE_OFS 48
-		#define FRAM_PTR %rbp
-		#define STCK_PTR %rsp
+		#define FRAM_PTR FPPT
+		#define STCK_PTR STPT
 
 		pushq FRAM_PTR
 		movq STCK_PTR, FRAM_PTR
@@ -791,8 +837,187 @@
     	#undef PROC_OFS
     	#undef SIGN_YEL
 
+    send_signal:
+    	movq SYSCNR_kill, SYSC_NRR
+    	syscall
+
+    	ret
+
+    get_process_id:
+    	movq SYSCNR_getpid, SYSC_NRR
+    	syscall
+
+    send_signal_to_self:
+    	#define SIGN_NUM CABI_AG0
+    	#define TEMP_REG CLB1_QWD
+
+    	movq SIGN_NUM, TEMP_REG
+
+    	movq SYSCNR_getpid, SYSC_NRR
+    	syscall
+
+    	movq SYSC_RET, SYSC_AG0
+    	movq TEMP_REG, SYSC_AG1
+    	syscall
+
+    	ret
+
+    	#undef SIGN_NUM
+    	#undef TEMP_REG
+
+    signal_action_ignore:
+    	#define SIGN_NUM CABI_AG0
+    	#define STCK_PTR STPT_QWD
+    	#define FRAM_PTR FPPT_QWD
+    	#define SIGN_IGN $1
+    	#define ALOC_NUM $152
+
+    	pushq FRAM_PTR
+    	movq STCK_PTR, FRAM_PTR
+    	subq ALOC_SIZE, FRAM_PTR
+
+    	movq SIGN_IGN, (STCK_PTR)
+    	leaq (STCK_PTR), SYSC_AG1
+    	xorq SYSC_AG2, SYSC_AG2
+    	movq SYSCNR_rt_sigaction, SYSC_NRR
+    	syscall
+
+    	popq FRAM_PTR
+    	ret
+
+    	#undef SIGN_NUM
+    	#undef TEMP_REG
+    	#undef STCK_PTR
+    	#undef FRAM_PTR
+    	#undef SIGN_IGN
+    	#undef ALOC_NUM
 
 
+    signal_action_default:
+    	#define SIGN_NUM CABI_AG0
+    	#define STCK_PTR STPT_QWD
+    	#define FRAM_PTR FPPT_QWD
+    	#define SIGN_DFL $0
+    	#define ALOC_NUM $152
+
+    	pushq FRAM_PTR
+    	movq STCK_PTR, FRAM_PTR
+    	subq ALOC_SIZE, FRAM_PTR
+
+    	
+    	movq SIGN_DFL, (STCK_PTR)
+    	leaq (STCK_PTR), SYSC_AG1
+    	xorq SYSC_AG2, SYSC_AG2
+    	movq SYSCNR_rt_sigaction, SYSC_NRR
+    	syscall
+
+    	popq FRAM_PTR
+    	ret
+    	
+    	#undef SIGN_NUM
+    	#undef STCK_PTR
+    	#undef FRAM_PTR
+    	#undef SIGN_DFL
+    	#undef ALOC_NUM
+
+    signal_action_handler_function:
+    	#define SIGN_NUM CABI_AG0
+    	#define SIGN_FUN CABI_AG1
+    	#define STCK_PTR STPT_QWD
+    	#define FRAM_PTR FPPT_QWD
+    	#define ALOC_NUM $152
+
+    	pushq FRAM_PTR
+    	movq STCK_PTR, FRAM_PTR
+    	subq ALOC_SIZE, FRAM_PTR
+
+    	movq SIGN_FUN, (STCK_PTR)
+    	leaq (STCK_PTR), SYSC_AG1
+    	xorq SYSC_AG2, SYSC_AG2
+    	movq SYSCNR_rt_sigaction, SYSC_NRR
+    	syscall
+
+    	popq FRAM_PTR
+    	ret
+    	
+    	#undef SIGN_NUM
+    	#undef STCK_PTR
+    	#undef FRAM_PTR
+    	#undef SIGN_DFL
+    	#undef ALOC_NUM
+
+    wait_and_see_if_child_stopped:
+    	#define STAT_REG SYSC_RET
+    	#define ANDQ_NUM $0xff
+    	#define STAT_TRU $0x7f
+    	#define RESL_TRU $1
+
+    	movq SYSCNR_wait4, SYSC_NRR
+    	syscall
+
+    	andq ANDQ_NUM, STAT_REG  	
+    	cmpq STAT_TRU, STAT_REG
+    	je 2f
+
+    	xorq STAT_REG, STAT_REG
+
+    1:
+    	ret
+
+    2:
+    	movq RESLT_TRU, STAT_REG
+    	jmp 1b
+
+    	#undef STAT_REG
+    	#undef ANDQ_NUM
+    	#undef STAT_TRU
+    	#undef RESL_TRU
+    
+    wait_and_see_if_child_continued:
+    	#define STAT_REG SYSC_RET
+    	#define STAT_TRU $0xffff
+    	#define RESL_TRU $1
+
+    	movq SYSCNR_wait4, SYSC_NRR
+    	syscall
+
+    	mpq STAT_TRU, STAT_REG
+    	je 2f
+
+    	xorq STAT_REG, STAT_REG
+
+    1:
+    	ret
+
+    2:
+    	movq RESLT_TRU, STAT_REG
+    	jmp 1b
+
+    	#undef STAT_REG
+    	#undef STAT_TRU
+    	#undef RESL_TRU
+
+    wait_and_see_if_child_exited:
+    	#define STAT_REG SYSC_RET
+    	#define RESL_TRU $1
+
+    	movq SYSCNR_wait4, SYSC_NRR
+    	syscall
+
+    	testq STAT_REG, STAT_REG
+    	je 2f
+
+    	xorq STAT_REG, STAT_REG
+
+    1:
+    	ret
+
+    2:
+    	movq RESLT_TRU, STAT_REG
+    	jmp 1b
+
+    	#undef STAT_REG
+    	#undef RESL_TRU
 
 #undef SYSCNR_read
 #undef SYSCNR_write
